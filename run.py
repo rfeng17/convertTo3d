@@ -34,8 +34,8 @@ def extract_features(folder_path, output_folder):
 
 
 # Image folders:
-source_path = "c:/Users/raymo/Documents/PythonProjects/3Dmodelai/stable-diffusion/outputs/txt2img-samples/samples"
-results_path = "c:/Users/raymo/Documents/PythonProjects/3Dmodelai/results/"
+source_path = "replace /path to images"
+results_path = "replace /path to output"
 
 # Process the images and store results to results_path folder
 
