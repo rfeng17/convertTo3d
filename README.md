@@ -10,7 +10,7 @@ pip install tensorflow
 <br />
 -Mesh and PointCloud-
 <br />
-pip install sklearn
+pip install scikit-learn
 <br />
 pip install pca
 <br />
