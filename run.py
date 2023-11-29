@@ -12,6 +12,10 @@ from pyntcloud import PyntCloud
 import open3d as o3d
 import pandas as pd
 
+# Image folders:
+source_path = "replace /path to images"
+results_path = "replace /path to output"
+
 # Load VGG16 Model
 model = VGG16(weights='imagenet')
 
@@ -32,14 +36,7 @@ def extract_features(folder_path, output_folder):
             output_path = os.path.join(output_folder, f'features_{filename}.npy')
             np.save(output_path, features)
 
-
-# Image folders:
-source_path = "replace /path to images"
-results_path = "replace /path to output"
-
 # Process the images and store results to results_path folder
-
-#Clear stable diffusion output and backs up content to a different path
 
 # Generate a timestamp for the current time
 timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
@@ -65,14 +62,14 @@ shutil.copytree(source_path, output_folder)
 # Process each image in the folder
 extract_features(source_path, output_folder)
 
-# Step 1: Set the path to the folder containing the saved features
+# Set the path to the folder containing the saved features
 features_folder = output_folder
 
-# Step 2: Initialize arrays to store features and filenames
+# Initialize arrays to store features and filenames
 all_features = []
 all_filenames = []
 
-# Step 3: Load features from files
+# Load features from files
 for filename in os.listdir(features_folder):
     if filename.endswith('.npy'):
         features_path = os.path.join(features_folder, filename)
@@ -84,12 +81,12 @@ for filename in os.listdir(features_folder):
         all_features.append(features)
         all_filenames.append(filename)
 
-# Step 4: Apply PCA for dimensionality reduction (optional but recommended)
+# Apply PCA for dimensionality reduction (optional but recommended)
 num_components = min(len(all_features), 2)  # Use the minimum of the number of samples and features
 pca = PCA(n_components=num_components)
 reduced_features = pca.fit_transform(all_features)
 
-# Step 5: Visualize the point cloud
+# Visualize the point cloud
 fig = plt.figure()
 ax = fig.add_subplot(111, projection='3d')
 
@@ -101,21 +98,21 @@ ax.set_ylabel('Principal Component 2')
 
 # Mesh generation
 
-# Step 4: Create synthetic coordinates for the point cloud
+# Create synthetic coordinates for the point cloud
 num_points = len(all_features)
 synthetic_coordinates = np.random.rand(num_points, 3)  # Random 3D coordinates
 
-# Step 5: Create a PointCloud object with Open3D
+# Create a PointCloud object with Open3D
 cloud = o3d.geometry.PointCloud()
 cloud.points = o3d.utility.Vector3dVector(synthetic_coordinates)
 
-# Step 6: Estimate normals for the point cloud
+# Estimate normals for the point cloud
 cloud.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=30))
 
-# Step 7: Poisson surface reconstruction
+# Poisson surface reconstruction
 mesh, _ = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(cloud)
 
-# Step 6: Save the mesh to a file (e.g., in STL format)
+# Save the mesh to a file (e.g., in STL format)
 mesh_filename = 'mesh.ply'
 mesh_path = os.path.join(output_folder, mesh_filename)
 o3d.io.write_triangle_mesh(mesh_path, mesh)
