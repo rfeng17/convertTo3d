@@ -6,6 +6,12 @@ pip install -r requirements.txt
 ## instructions for stable-diffusion:
 https://www.assemblyai.com/blog/how-to-run-stable-diffusion-locally-to-generate-images/
 
+<br />
+
+https://docs.conda.io/projects/miniconda/en/latest/
+
+*** install conda environment
+
 ## google collab:
 https://colab.research.google.com/drive/1f_3eQUUAodyRd3OMnOHyA7bltQrmBsqc?usp=sharing&authuser=1#scrollTo=hvJCVtNX2xhn
 
