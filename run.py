@@ -1,45 +1,162 @@
 import os
-import numpy as np
-from tensorflow.keras.preprocessing import image
-from tensorflow.keras.applications.vgg16 import preprocess_input, VGG16
-import subprocess
 import shutil
+import numpy as np
 from datetime import datetime
-from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-from pyntcloud import PyntCloud
 import open3d as o3d
-import pandas as pd
+import plotly.graph_objects as go
+from point_e.util.pc_to_mesh import marching_cubes_mesh
+import skimage.measure as measure
 
-# Load VGG16 Model
-model = VGG16(weights='imagenet')
+from PIL import Image
+import torch
+from tqdm.auto import tqdm
 
-def extract_features(folder_path, output_folder):
-    for filename in os.listdir(folder_path):
-        if filename.endswith(('.jpg', '.jpeg', '.png')):  # Adjust the file extensions as needed
-            # Step 2: Load and Preprocess Images
-            img_path = os.path.join(folder_path, filename)
-            img = image.load_img(img_path, target_size=(224, 224))
-            img_array = image.img_to_array(img)
-            img_array = preprocess_input(img_array)
-
-            # Step 4: Extract Features
-            img_array = np.expand_dims(img_array, axis=0)  # Add batch dimension
-            features = model.predict(img_array)
-
-            # Step 5: Save Features (Optional)
-            output_path = os.path.join(output_folder, f'features_{filename}.npy')
-            np.save(output_path, features)
+from point_e.diffusion.configs import DIFFUSION_CONFIGS, diffusion_from_config
+from point_e.diffusion.sampler import PointCloudSampler
+from point_e.models.download import load_checkpoint
+from point_e.models.configs import MODEL_CONFIGS, model_from_config
+from point_e.util.plotting import plot_point_cloud
 
 
 # Image folders:
-source_path = "c:/Users/raymo/Documents/PythonProjects/3Dmodelai/stable-diffusion/outputs/txt2img-samples/samples"
-results_path = "c:/Users/raymo/Documents/PythonProjects/3Dmodelai/results/"
+source_path = "path to images"
+results_path = "path to results"
 
-# Process the images and store results to results_path folder
+### Models
 
-#Clear stable diffusion output and backs up content to a different path
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+print('creating base model...')
+base_name = 'base40M'
+base_model = model_from_config(MODEL_CONFIGS[base_name], device)
+base_model.eval()
+base_diffusion = diffusion_from_config(DIFFUSION_CONFIGS[base_name])
+
+print('creating upsample model...')
+upsampler_model = model_from_config(MODEL_CONFIGS['upsample'], device)
+upsampler_model.eval()
+upsampler_diffusion = diffusion_from_config(DIFFUSION_CONFIGS['upsample'])
+
+print('downloading base checkpoint...')
+base_model.load_state_dict(load_checkpoint(base_name, device))
+
+print('downloading upsampler checkpoint...')
+upsampler_model.load_state_dict(load_checkpoint('upsample', device))
+
+sampler = PointCloudSampler(
+    device=device,
+    models=[base_model, upsampler_model],
+    diffusions=[base_diffusion, upsampler_diffusion],
+    num_points=[1024, 4096 - 1024],
+    aux_channels=['R', 'G', 'B'],
+    guidance_scale=[3.0, 3.0],
+)
+
+images_list = []
+
+def extract_images(folder_path):
+    for filename in os.listdir(folder_path):
+        if filename.endswith(('.jpg', '.jpeg', '.png')):  # Adjust the file extensions as needed
+            # Load and Preprocess Images
+            img_path = os.path.join(folder_path, filename)
+
+            images_list.append(img_path)
+
+def process_images(images, output_folder):
+    for image in images:
+            img = Image.open(image)
+            # Produce a sample from the model.
+            samples = None
+            for x in tqdm(sampler.sample_batch_progressive(batch_size=1, model_kwargs=dict(images=[img]))):
+                samples = x
+
+            pc = sampler.output_to_point_clouds(samples)[0]
+
+            fig = plot_point_cloud(pc, grid_size=3, fixed_bounds=((-0.75, -0.75, -0.75),(0.75, 0.75, 0.75)))
+
+            plt.show()
+
+            fig_plotly = go.Figure(
+                    data=[
+                        go.Scatter3d(
+                            x=pc.coords[:,0], y=pc.coords[:,1], z=pc.coords[:,2], 
+                            mode='markers',
+                            marker=dict(
+                            size=2,
+                            color=['rgb({},{},{})'.format(r,g,b) for r,g,b in zip(pc.channels["R"], pc.channels["G"], pc.channels["B"])],
+                        )
+                        )
+                    ],
+                    layout=dict(
+                        scene=dict(
+                            xaxis=dict(visible=False),
+                            yaxis=dict(visible=False),
+                            zaxis=dict(visible=False)
+                        )
+                    ),
+                )
+            
+            fig_plotly.show(renderer="colab")
+
+            #device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+            print('creating SDF model...')
+            name = 'sdf'
+            model = model_from_config(MODEL_CONFIGS[name], device)
+            model.eval()
+
+            print('loading SDF model...')
+            model.load_state_dict(load_checkpoint(name, device))
+
+            # Produce a mesh (with vertex colors)
+            mesh = marching_cubes_mesh(
+                pc=pc,
+                model=model,
+                batch_size=4096,
+                grid_size=128, # increase to 128 for resolution used in evals
+                progress=True,
+            )
+
+            mesh_filename = image + 'mesh.ply'
+            mesh_path = os.path.join(output_folder, mesh_filename)
+
+            # Write the mesh to a PLY file to import into some other program.
+            with open(mesh_path, 'wb') as f:
+                mesh.write_ply(f)
+
+            # Use open3D
+            mesh = o3d.io.read_triangle_mesh(mesh_path)
+
+            # Access vertices as a numpy array
+            vertices = np.asarray(mesh.vertices)
+
+            # Convert numpy array to Open3D PointCloud
+            point_cloud = o3d.geometry.PointCloud()
+            point_cloud.points = o3d.utility.Vector3dVector(vertices)
+
+            # Estimate normals for the point cloud
+            point_cloud.estimate_normals()
+
+            # Poisson surface reconstruction
+            poisson_mesh, densities = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(point_cloud, depth=8)
+
+            # Visualize the original mesh
+            o3d.visualization.draw_geometries([mesh], window_name="Original Mesh")
+
+            # Remove duplicated vertices
+            poisson_mesh.remove_duplicated_vertices()
+            # Remove degenerate triangles and unreferenced vertices
+            poisson_mesh.remove_degenerate_triangles()
+            poisson_mesh.remove_unreferenced_vertices()
+            # draw mesh
+            poisson_mesh.compute_vertex_normals()
+            # Visualize the Poisson reconstructed mesh
+            o3d.visualization.draw_geometries([poisson_mesh], window_name="Poisson Reconstruction")
+
+            new_mesh_filename = 'cleaned_' + image + 'mesh.ply'
+            mesh_path = os.path.join(output_folder, new_mesh_filename)
+            o3d.io.write_triangle_mesh(mesh_path, poisson_mesh)
 
 # Generate a timestamp for the current time
 timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
@@ -53,73 +170,7 @@ if os.path.exists(output_folder):
 # Copy the source folder to the destination
 shutil.copytree(source_path, output_folder)
 
-# Clear the contents of the source folder
-#for root, dirs, files in os.walk(source_path):
-#    for file in files:
-#        file_path = os.path.join(root, file)
-#        os.remove(file_path)
-#    for dir in dirs:
-#        dir_path = os.path.join(root, dir)
-#        os.rmdir(dir_path)
 
 # Process each image in the folder
-extract_features(source_path, output_folder)
-
-# Step 1: Set the path to the folder containing the saved features
-features_folder = output_folder
-
-# Step 2: Initialize arrays to store features and filenames
-all_features = []
-all_filenames = []
-
-# Step 3: Load features from files
-for filename in os.listdir(features_folder):
-    if filename.endswith('.npy'):
-        features_path = os.path.join(features_folder, filename)
-        features = np.load(features_path)
-        
-        # Assuming features are 1D or 2D, reshape them into a flat 1D array
-        features = features.flatten()
-
-        all_features.append(features)
-        all_filenames.append(filename)
-
-# Step 4: Apply PCA for dimensionality reduction (optional but recommended)
-num_components = min(len(all_features), 2)  # Use the minimum of the number of samples and features
-pca = PCA(n_components=num_components)
-reduced_features = pca.fit_transform(all_features)
-
-# Step 5: Visualize the point cloud
-fig = plt.figure()
-ax = fig.add_subplot(111, projection='3d')
-
-# Plot each point in the point cloud
-ax.scatter(reduced_features[:, 0], reduced_features[:, 1], c='b', marker='o')
-
-ax.set_xlabel('Principal Component 1')
-ax.set_ylabel('Principal Component 2')
-
-# Mesh generation
-
-# Step 4: Create synthetic coordinates for the point cloud
-num_points = len(all_features)
-synthetic_coordinates = np.random.rand(num_points, 3)  # Random 3D coordinates
-
-# Step 5: Create a PointCloud object with Open3D
-cloud = o3d.geometry.PointCloud()
-cloud.points = o3d.utility.Vector3dVector(synthetic_coordinates)
-
-# Step 6: Estimate normals for the point cloud
-cloud.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=30))
-
-# Step 7: Poisson surface reconstruction
-mesh, _ = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(cloud)
-
-# Step 6: Save the mesh to a file (e.g., in STL format)
-mesh_filename = 'mesh.ply'
-mesh_path = os.path.join(output_folder, mesh_filename)
-o3d.io.write_triangle_mesh(mesh_path, mesh)
-
-plt.show()
-
-
+extract_images(source_path)
+process_images(images_list, output_folder)
