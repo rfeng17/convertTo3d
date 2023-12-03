@@ -18,8 +18,9 @@ https://colab.research.google.com/drive/1f_3eQUUAodyRd3OMnOHyA7bltQrmBsqc?usp=sh
 # USAGE:
 <br />
 In run.py:
-*** source_path = "replace with path to /stable-diffusion/outputs/txt2img-samples/samples"
-*** results_path = "replace with custom path to folder for results"
+<br />
+## source_path = "replace with path to /stable-diffusion/outputs/txt2img-samples/samples"
+## results_path = "replace with custom path to folder for results"
 
 * Stable-diffusion is not needed for source_path (use the path to a folder of images instead)
 ```
