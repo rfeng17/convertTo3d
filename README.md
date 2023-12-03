@@ -24,14 +24,10 @@ results_path = "replace with custom path to folder for results"
 
 ```
 *** Stable-diffusion is not needed for source_path (use the path to a folder of images instead)
-
-<br />
 ```
 python generate.py
 ```
 * You will be asked to input a prompt for image generation through stable-diffusion
-
-<br />
 ```
 python run.py
 ```
