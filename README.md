@@ -26,6 +26,8 @@ source_path = "replace with path to /stable-diffusion/outputs/txt2img-samples/sa
 
 results_path = "replace with custom path to folder for results"
 
+<br />
+
 * Stable-diffusion is not needed for source_path (use the path to a folder of images instead)
 ```
 python generate.py
