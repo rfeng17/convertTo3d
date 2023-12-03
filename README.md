@@ -35,4 +35,5 @@ python generate.py
 ```
 python run.py
 ```
+
 * This will take images as input and process them into 3D objects and mesh. Outputs the mesh.ply in the results_folder for further use if necessary
