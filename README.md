@@ -20,13 +20,14 @@ https://colab.research.google.com/drive/1f_3eQUUAodyRd3OMnOHyA7bltQrmBsqc?usp=sh
 In run.py:
 <br />
 ## source_path = "replace with path to /stable-diffusion/outputs/txt2img-samples/samples"
+<br />
 ## results_path = "replace with custom path to folder for results"
 
 * Stable-diffusion is not needed for source_path (use the path to a folder of images instead)
 ```
 python generate.py
 ```
-You will be asked to input a prompt for image generation through stable-diffusion
+* You will be asked to input a prompt for image generation through stable-diffusion
 ```
 python run.py
 ```
