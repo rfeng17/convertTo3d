@@ -113,11 +113,13 @@ def process_images(images, output_folder):
                 pc=pc,
                 model=model,
                 batch_size=4096,
-                grid_size=128, # increase to 128 for resolution used in evals
+                grid_size=64, # increase to 128 for resolution used in evals
                 progress=True,
             )
 
-            mesh_filename = image + 'mesh.ply'
+            name_len = len(image)
+            name_img = image[0:name_len-4]
+            mesh_filename = name_img + 'mesh.ply'
             mesh_path = os.path.join(output_folder, mesh_filename)
 
             # Write the mesh to a PLY file to import into some other program.
@@ -126,50 +128,40 @@ def process_images(images, output_folder):
 
             # Use open3D
             mesh = o3d.io.read_triangle_mesh(mesh_path)
+            mesh.compute_vertex_normals()
 
-            # Access vertices as a numpy array
-            vertices = np.asarray(mesh.vertices)
+            pcd = mesh.sample_points_poisson_disk(3000)
+            o3d.visualization.draw_geometries([pcd], point_show_normal=True)
+            radii = [0.005, 0.01, 0.02, 0.04]
 
-            # Convert numpy array to Open3D PointCloud
-            point_cloud = o3d.geometry.PointCloud()
-            point_cloud.points = o3d.utility.Vector3dVector(vertices)
+            rec_mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_ball_pivoting(
+               pcd, o3d.utility.DoubleVector(radii))
+            
+            rec_mesh.compute_vertex_normals()
 
-            # Estimate normals for the point cloud
-            point_cloud.estimate_normals()
-
-            # Poisson surface reconstruction
-            poisson_mesh, densities = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(point_cloud, depth=8)
+            o3d.visualization.draw_geometries([pcd, rec_mesh])
 
             # Visualize the original mesh
             o3d.visualization.draw_geometries([mesh], window_name="Original Mesh")
 
-            # Remove duplicated vertices
-            poisson_mesh.remove_duplicated_vertices()
-            # Remove degenerate triangles and unreferenced vertices
-            poisson_mesh.remove_degenerate_triangles()
-            poisson_mesh.remove_unreferenced_vertices()
-            # draw mesh
-            poisson_mesh.compute_vertex_normals()
-            # Visualize the Poisson reconstructed mesh
-            o3d.visualization.draw_geometries([poisson_mesh], window_name="Poisson Reconstruction")
+            pcd.estimate_normals()
+            
+            #print('run Poisson surface reconstruction')
+            with o3d.utility.VerbosityContextManager(o3d.utility.VerbosityLevel.Debug) as cm:
+                poisson_mesh, densities = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(pcd, depth=9)
+            #print(mesh)
+            o3d.visualization.draw_geometries([poisson_mesh])
 
-            new_mesh_filename = 'cleaned_' + image + 'mesh.ply'
-            mesh_path = os.path.join(output_folder, new_mesh_filename)
-            o3d.io.write_triangle_mesh(mesh_path, poisson_mesh)
 
-# Generate a timestamp for the current time
+
 timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-
-# Create the destination folder with the timestamp
 output_folder = os.path.join(results_path, f"result_{timestamp}")
 
 if os.path.exists(output_folder):
         shutil.rmtree(output_folder)
 
-# Copy the source folder to the destination
-shutil.copytree(source_path, output_folder)
-
-
-# Process each image in the folder
 extract_images(source_path)
 process_images(images_list, output_folder)
+
+# Copy the source folder to the destination
+shutil.copytree(source_path, output_folder)
