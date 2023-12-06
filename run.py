@@ -19,7 +19,8 @@ from point_e.models.configs import MODEL_CONFIGS, model_from_config
 from point_e.util.plotting import plot_point_cloud
 
 # Image folders and  paths:
-source_path = "/stable-diffusion/outputs/txt2img-samples/samples"
+#source_path = "/stable-diffusion/outputs/txt2img-samples/samples"
+source_path = "/imageset"
 results_path = "/results"
 
 ### Models
