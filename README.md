@@ -1,13 +1,14 @@
 --version python 3.10
 
 # INSTALLATION:
-pip install -r requirements.txt
 
 ```
+pip install -r requirements.txt
 pip install plotly -q
+
 git clone https://github.com/openai/point-e
 cd point-e
-ip install -e . -q
+pip install -e . -q
 ```
 
 ## google collab:
@@ -18,9 +19,7 @@ https://www.assemblyai.com/blog/how-to-run-stable-diffusion-locally-to-generate-
 
 <br />
 
-install conda environment:
-
-https://docs.conda.io/projects/miniconda/en/latest/
+install conda environment: https://docs.conda.io/projects/miniconda/en/latest/
 
 Open3D tutorial: http://www.open3d.org/docs/0.10.0/tutorial/Advanced/surface_reconstruction.html
 
