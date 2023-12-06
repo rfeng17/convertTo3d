@@ -3,7 +3,17 @@
 # INSTALLATION:
 pip install -r requirements.txt
 
-## instructions for stable-diffusion:
+```
+pip install plotly -q
+git clone https://github.com/openai/point-e
+cd point-e
+ip install -e . -q
+```
+
+## google collab:
+https://colab.research.google.com/drive/1f_3eQUUAodyRd3OMnOHyA7bltQrmBsqc?usp=sharing&authuser=1#scrollTo=hvJCVtNX2xhn
+
+## instructions for stable-diffusion (optional):
 https://www.assemblyai.com/blog/how-to-run-stable-diffusion-locally-to-generate-images/
 
 <br />
@@ -12,8 +22,7 @@ install conda environment:
 
 https://docs.conda.io/projects/miniconda/en/latest/
 
-## google collab:
-https://colab.research.google.com/drive/1f_3eQUUAodyRd3OMnOHyA7bltQrmBsqc?usp=sharing&authuser=1#scrollTo=hvJCVtNX2xhn
+Open3D tutorial: http://www.open3d.org/docs/0.10.0/tutorial/Advanced/surface_reconstruction.html
 
 ## In folder:
 
