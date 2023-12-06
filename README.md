@@ -19,7 +19,7 @@ https://www.assemblyai.com/blog/how-to-run-stable-diffusion-locally-to-generate-
 
 <br />
 
-install conda environment: https://docs.conda.io/projects/miniconda/en/latest/
+Install conda environment: https://docs.conda.io/projects/miniconda/en/latest/
 
 Open3D tutorial: http://www.open3d.org/docs/0.10.0/tutorial/Advanced/surface_reconstruction.html
 
