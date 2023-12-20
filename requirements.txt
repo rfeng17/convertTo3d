@@ -44,5 +44,5 @@ tensorflow_intel==2.15.0
 torch==1.13.1+cu117
 torchvision==0.14.1+cu117
 tqdm==4.66.1
-transformers==4.35.2
+transformers==4.36.0
 typing_extensions==4.8.0
